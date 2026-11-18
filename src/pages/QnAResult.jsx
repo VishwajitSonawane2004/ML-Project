@@ -24,6 +24,10 @@ export default function QnAResult() {
   const navigate = useNavigate();
 
   const [result, setResult] = useState(null);
+  const [teacherStatus, setTeacherStatus] = useState(null); // 'approved' | 'overridden'
+  const [overrideClass, setOverrideClass] = useState('');
+  const [teacherNotes, setTeacherNotes] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem('current_qa_result');
@@ -247,12 +251,12 @@ export default function QnAResult() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* P(Correct) */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5 whitespace-nowrap">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                 P(Correct)
               </span>
-              <span className="font-mono text-xs font-bold text-slate-800">
+              <span className="font-mono text-xs font-bold text-slate-800 shrink-0">
                 {(probs.correct * 100).toFixed(1)}%
               </span>
             </div>
@@ -266,12 +270,12 @@ export default function QnAResult() {
 
           {/* P(Partial) */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-amber-700 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                P(Partially Correct)
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-amber-700 flex items-center gap-1.5 whitespace-nowrap">
+                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                P(Partial)
               </span>
-              <span className="font-mono text-xs font-bold text-slate-800">
+              <span className="font-mono text-xs font-bold text-slate-800 shrink-0">
                 {(probs.partial * 100).toFixed(1)}%
               </span>
             </div>
@@ -285,12 +289,12 @@ export default function QnAResult() {
 
           {/* P(Incorrect) */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-red-700 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-red-500" />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-red-700 flex items-center gap-1.5 whitespace-nowrap">
+                <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
                 P(Incorrect)
               </span>
-              <span className="font-mono text-xs font-bold text-slate-800">
+              <span className="font-mono text-xs font-bold text-slate-800 shrink-0">
                 {(probs.incorrect * 100).toFixed(1)}%
               </span>
             </div>
@@ -360,6 +364,122 @@ export default function QnAResult() {
         <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-100 text-[11px] text-purple-900 leading-relaxed">
           <span className="font-bold">System Notice:</span> {result.modelNotice}
         </div>
+      </div>
+
+      {/* Human-in-the-Loop Educator Validation Gate */}
+      <div className="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <UserCheck size={16} className="text-brand-600" />
+            <span>Human-in-the-Loop Educator Validation</span>
+          </h3>
+          <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+            Selective Scoring Gating
+          </span>
+        </div>
+
+        {isSaved ? (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-center gap-3">
+            <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+            <div>
+              <p className="font-bold">Assessment Verified by Educator</p>
+              <p className="text-[11px] text-emerald-800 mt-0.5">
+                Status finalized as: <span className="font-bold">{overrideClass || result.classification}</span>. 
+                {teacherNotes && ` Note: "${teacherNotes}"`}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              As part of our <span className="font-semibold text-slate-900">Selective Scoring Policy</span>, predictions requiring human review must be confirmed by the teacher before finalizing the student's Reading Skills Profile.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setTeacherStatus('approved');
+                  setOverrideClass(result.classification);
+                  setIsSaved(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5"
+              >
+                <Check size={14} />
+                <span>Confirm AI Grade ({result.classification})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setTeacherStatus('overridden');
+                  setOverrideClass('Partially Correct');
+                }}
+                className={`px-4 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+                  overrideClass === 'Partially Correct'
+                    ? 'bg-amber-100 border-amber-400 text-amber-900'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                Override: Partially Correct
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setTeacherStatus('overridden');
+                  setOverrideClass('Correct');
+                }}
+                className={`px-4 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+                  overrideClass === 'Correct'
+                    ? 'bg-emerald-100 border-emerald-400 text-emerald-900'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                Override: Correct
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setTeacherStatus('overridden');
+                  setOverrideClass('Incorrect');
+                }}
+                className={`px-4 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+                  overrideClass === 'Incorrect'
+                    ? 'bg-red-100 border-red-400 text-red-900'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                Override: Incorrect
+              </button>
+            </div>
+
+            {teacherStatus === 'overridden' && (
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="text-xs font-semibold text-slate-700 block">
+                  Educator Override Justification:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={teacherNotes}
+                    onChange={(e) => setTeacherNotes(e.target.value)}
+                    placeholder="e.g., Student understood phase change but used vernacular language..."
+                    className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsSaved(true)}
+                    className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
+                  >
+                    Save Final Review
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Summary */}
